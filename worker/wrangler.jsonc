@@ -1,0 +1,7 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "xep-cho-api",
+  "main": "src/index.js",
+  "compatibility_date": "2026-07-24",
+  "observability": { "enabled": true, "head_sampling_rate": 1 }
+}
