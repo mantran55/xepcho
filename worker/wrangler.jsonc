@@ -1,7 +1,7 @@
 {
   "$schema": "./node_modules/wrangler/config-schema.json",
-  "name": "xep-cho-api",
-  "main": "worker/src/index.js",
+  "name": "xepcho",
+  "main": "src/index.js",
   "compatibility_date": "2026-07-24",
   "durable_objects": {
     "bindings": [{ "name": "SEAT_ROOM", "class_name": "SeatRoom" }]
