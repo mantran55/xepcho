@@ -24,57 +24,48 @@ async function updateSeat(env,b){
     b.position > MAX_SEATS
   ) throw new Error('Vị trí không hợp lệ');
 
-  const col = seatCol(b.side,b.position);
+  // ÉP CỘT THỦ CÔNG ĐỂ TEST
+  let col;
+  if (b.side === 'female') {
+    if (b.position === 1) col = 10;      // J
+    else if (b.position === 2) col = 9;  // I
+    else col = 11 - b.position;
+  } else {
+    col = b.position + 1;
+  }
+
   const cell = `${sheetOf(b.side)}!${colLetter(col)}${b.row}`;
+
   const value = b.name
-    ? `${b.name} - ${b.className||''}`.trim().replace(/ -$/,'')
+    ? `${b.name} - ${b.className || ''}`.trim().replace(/ -$/,'')
     : '';
 
-  console.log('UPDATE SEAT', {
-    side: b.side,
-    row: b.row,
-    position: b.position,
-    col,
-    cell,
-    value
-  });
-
   if(!value){
-    await sheets(
-      env,
-      `/values/${encodeURIComponent(cell)}:clear`,
-      {
-        method:'POST',
-        body:'{}'
-      }
-    );
+    await sheets(env,`/values/${encodeURIComponent(cell)}:clear`,{
+      method:'POST',
+      body:'{}'
+    });
 
     const id = await sheetId(env,sheetOf(b.side));
 
-    await sheets(
-      env,
-      ':batchUpdate',
-      {
-        method:'POST',
-        body:JSON.stringify({
-          requests:[
-            {
-              updateCells:{
-                range:{
-                  sheetId:id,
-                  startRowIndex:b.row-1,
-                  endRowIndex:b.row,
-                  startColumnIndex:col-1,
-                  endColumnIndex:col
-                },
-                rows:[{values:[{note:''}]}],
-                fields:'note'
-              }
-            }
-          ]
-        })
-      }
-    );
+    await sheets(env,':batchUpdate',{
+      method:'POST',
+      body:JSON.stringify({
+        requests:[{
+          updateCells:{
+            range:{
+              sheetId:id,
+              startRowIndex:b.row-1,
+              endRowIndex:b.row,
+              startColumnIndex:col-1,
+              endColumnIndex:col
+            },
+            rows:[{values:[{note:''}]}],
+            fields:'note'
+          }
+        }]
+      })
+    });
 
     return;
   }
