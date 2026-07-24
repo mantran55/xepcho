@@ -1,6 +1,6 @@
 {
   "$schema": "./node_modules/wrangler/config-schema.json",
-  "name": "xep-cho-api",
+  "name": "xepcho",
   "main": "worker/src/index.js",
   "compatibility_date": "2026-07-24",
   "durable_objects": {
