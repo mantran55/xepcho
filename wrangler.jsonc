@@ -3,5 +3,9 @@
   "name": "xep-cho-api",
   "main": "worker/src/index.js",
   "compatibility_date": "2026-07-24",
+  "durable_objects": {
+    "bindings": [{ "name": "SEAT_ROOM", "class_name": "SeatRoom" }]
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["SeatRoom"] }],
   "observability": { "enabled": true, "head_sampling_rate": 1 }
 }
