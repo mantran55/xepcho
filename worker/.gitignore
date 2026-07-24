@@ -1,0 +1,17 @@
+# Dependencies and Cloudflare local state
+node_modules/
+worker/node_modules/
+.wrangler/
+worker/.wrangler/
+
+# Local environment and service-account credentials
+.env
+.env.*
+.dev.vars
+worker/.dev.vars
+service-account*.json
+google-service-account*.json
+
+# OS/editor files
+.DS_Store
+Thumbs.db
