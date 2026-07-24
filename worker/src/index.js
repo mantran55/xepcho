@@ -6,15 +6,14 @@ function cors(request, env){const origin=request.headers.get('Origin')||'';retur
 function json(value,request,env,status=200){return new Response(JSON.stringify(value),{status,headers:{...cors(request,env),'Content-Type':'application/json;charset=utf-8'}})}
 async function googleToken(env){const a=JSON.parse(env.GOOGLE_SERVICE_ACCOUNT_JSON);const now=Math.floor(Date.now()/1000), header=b64url(JSON.stringify({alg:'RS256',typ:'JWT'})), claims=b64url(JSON.stringify({iss:a.client_email,scope:'https://www.googleapis.com/auth/spreadsheets',aud:'https://oauth2.googleapis.com/token',iat:now,exp:now+3500}));const key=await crypto.subtle.importKey('pkcs8',Uint8Array.from(atob(a.private_key.replace(/-----(BEGIN|END) PRIVATE KEY-----|\s/g,'')),x=>x.charCodeAt(0)),{name:'RSASSA-PKCS1-v1_5',hash:'SHA-256'},false,['sign']);const sig=await crypto.subtle.sign('RSASSA-PKCS1-v1_5',key,enc.encode(header+'.'+claims));const body=new URLSearchParams({grant_type:'urn:ietf:params:oauth:grant-type:jwt-bearer',assertion:header+'.'+claims+'.'+b64url(sig)});const r=await fetch('https://oauth2.googleapis.com/token',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body});if(!r.ok)throw new Error('Google authentication failed');return (await r.json()).access_token}
 async function sheets(env,path,init={}){const token=await googleToken(env);const r=await fetch('https://sheets.googleapis.com/v4/spreadsheets/'+SPREADSHEET_ID+path,{...init,headers:{Authorization:'Bearer '+token,'Content-Type':'application/json',...(init.headers||{})}});if(!r.ok)throw new Error(`Google Sheets error (${r.status})`);return r.status===204?null:r.json()}
-// Nam dùng A→I, Nữ dùng I→A: mỗi bàn tối đa 9 vị trí.
+// Cả hai sheet lưu chỗ ngồi theo một thứ tự duy nhất B→J.
+// Cột A của Nam và cột K của Nữ vẫn có thể giữ số bàn.
 const SEAT_COUNTS=[2,2,3,3,4,4,4,4,5,5,6,7,7,7,7,7,7,7], MAX_SEATS=9;
 const normal=s=>String(s).trim().normalize('NFC').toLocaleLowerCase('vi-VN');
 // Số bàn được xác định theo dòng: bàn 1 là dòng 1.
-// Nam: vị trí 1 = A, vị trí 2 = B. Nữ: vị trí 1 = I, vị trí 2 = H.
-const seatCol = (side, position) =>
-  side === 'male'
-    ? position
-    : 10 - position;
+// Vị trí 1 = B, vị trí 2 = C … vị trí 9 = J, áp dụng giống nhau cho Nam và Nữ.
+// Bên Nữ chỉ đảo chiều lúc VẼ trên web; thứ tự dữ liệu không bị đảo.
+const seatCol = (_side, position) => position + 1;
 const parseStudent=value=>{const split=String(value||'').lastIndexOf(' - ');return split<0?{value:String(value||''),name:String(value||''),className:''}:{value:String(value),name:String(value).slice(0,split),className:String(value).slice(split+3)}};
 function makeSide(sheet,side){const rows=sheet.data?.[0]?.rowData||[];return SEAT_COUNTS.map((base,index)=>{const row=index+1, values=rows[index]?.values||[];let count=base;for(let position=base+1;position<=MAX_SEATS;position++){const cell=values[seatCol(side,position)-1];if(cell?.userEnteredValue)count=position}return {table:String(row),seats:Array.from({length:count},(_,i)=>{const position=i+1,col=seatCol(side,position),value=values[col-1]?.formattedValue||'';return {side,row,col,table:String(row),position,...parseStudent(value)}})}})}
 async function plan(env){const fields='sheets(properties(title),data(rowData(values(formattedValue,userEnteredValue))))';const raw=await sheets(env,`?includeGridData=true&fields=${encodeURIComponent(fields)}`);const find=n=>{const sheet=raw.sheets.find(s=>normal(s.properties.title)===normal(n));if(!sheet)throw new Error(`Không tìm thấy tab "${n}". Các tab hiện có: ${raw.sheets.map(s=>s.properties.title).join(', ')}`);return sheet};const ds=await sheets(env,'/values/DS!A2:B');return {female:makeSide(find('Nữ'),'female'),male:makeSide(find('Nam'),'male'),students:(ds.values||[]).filter(x=>x[1]).map(x=>({className:x[0]||'',name:x[1]}))}}
