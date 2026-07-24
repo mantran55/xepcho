@@ -8,7 +8,11 @@ async function googleToken(env){const a=JSON.parse(env.GOOGLE_SERVICE_ACCOUNT_JS
 async function sheets(env,path,init={}){const token=await googleToken(env);const r=await fetch('https://sheets.googleapis.com/v4/spreadsheets/'+SPREADSHEET_ID+path,{...init,headers:{Authorization:'Bearer '+token,'Content-Type':'application/json',...(init.headers||{})}});if(!r.ok)throw new Error(`Google Sheets error (${r.status})`);return r.status===204?null:r.json()}
 const SEAT_COUNTS=[2,2,3,3,4,4,4,4,5,5,6,7,7,7,7,7,7,7], MAX_SEATS=10;
 const normal=s=>String(s).trim().normalize('NFC').toLocaleLowerCase('vi-VN');
-const seatCol=(side,position)=>side==='male'?position+1:11-position;
+// Nam: vị trí 1 = B (cột 2), vị trí 2 = C. Nữ: vị trí 1 = J (cột 10), vị trí 2 = I.
+const seatCol = (side, position) =>
+  side === 'male'
+    ? position + 1
+    : 11 - position;
 const parseStudent=value=>{const split=String(value||'').lastIndexOf(' - ');return split<0?{value:String(value||''),name:String(value||''),className:''}:{value:String(value),name:String(value).slice(0,split),className:String(value).slice(split+3)}};
 function makeSide(sheet,side){const rows=sheet.data?.[0]?.rowData||[];return SEAT_COUNTS.map((base,index)=>{const row=index+1, values=rows[index]?.values||[];let count=base;for(let position=base+1;position<=MAX_SEATS;position++){const cell=values[seatCol(side,position)-1];if(cell?.userEnteredValue)count=position}return {table:String(row),seats:Array.from({length:count},(_,i)=>{const position=i+1,col=seatCol(side,position),value=values[col-1]?.formattedValue||'';return {side,row,col,table:String(row),position,...parseStudent(value)}})}})}
 async function plan(env){const fields='sheets(properties(title),data(rowData(values(formattedValue,userEnteredValue))))';const raw=await sheets(env,`?includeGridData=true&fields=${encodeURIComponent(fields)}`);const find=n=>{const sheet=raw.sheets.find(s=>normal(s.properties.title)===normal(n));if(!sheet)throw new Error(`Không tìm thấy tab "${n}". Các tab hiện có: ${raw.sheets.map(s=>s.properties.title).join(', ')}`);return sheet};const ds=await sheets(env,'/values/DS!A2:B');return {female:makeSide(find('Nữ'),'female'),male:makeSide(find('Nam'),'male'),students:(ds.values||[]).filter(x=>x[1]).map(x=>({className:x[0]||'',name:x[1]}))}}
@@ -24,15 +28,7 @@ async function updateSeat(env,b){
     b.position > MAX_SEATS
   ) throw new Error('Vị trí không hợp lệ');
 
-  // ÉP CỘT THỦ CÔNG ĐỂ TEST
-  let col;
-  if (b.side === 'female') {
-    if (b.position === 1) col = 10;      // J
-    else if (b.position === 2) col = 9;  // I
-    else col = 11 - b.position;
-  } else {
-    col = b.position + 1;
-  }
+  const col = seatCol(b.side, b.position);
 
   const cell = `${sheetOf(b.side)}!${colLetter(col)}${b.row}`;
 
